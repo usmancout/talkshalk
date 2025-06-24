@@ -19,29 +19,16 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ALLOWED ORIGINS FOR CORS
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://talkshalk-production.up.railway.app'
-];
-
 // Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
+  origin: `https://your-app-production.up.railway.app`, // Update with your Railway URL
+  credentials: true,
 }));
-
 app.use(express.json());
 app.use(cookieParser());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve frontend build
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -49,35 +36,33 @@ app.use('/api/posts', postRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/comments', commentRoutes);
 
-// MongoDB connection with better error handling
+// Catch-all route to serve index.html for frontend routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+// MongoDB connection
 const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/talkshalk';
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(mongoURI);
     console.log('✅ Connected to MongoDB successfully');
     console.log(`📊 Database: ${mongoose.connection.name}`);
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
-    console.log('💡 Make sure MongoDB is running or check your connection string');
-    console.log('🔗 You can also use MongoDB Atlas by updating MONGODB_URI in .env file');
     process.exit(1);
   }
 };
 
-// Connect to database
 connectDB();
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Frontend: http://localhost:5173`);
-  console.log(`🔧 Backend: http://localhost:${PORT}`);
+  console.log(`🌐 App: https://talkshalk.up.railway.app`);
 });
